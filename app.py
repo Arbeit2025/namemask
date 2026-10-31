@@ -127,7 +127,7 @@ textarea{width:100%}table{border-collapse:collapse}td,th{border:1px solid #ccc;p
 <h2>保存済みの対応表</h2>
 <ul>
 {% for m in maps %}
-<li>{{ m.created_at }} {{ m.name }}（<a href="{{ url_for('restore_page', map_id=m.id) }}">復元に使う</a>）</li>
+<li>{{ m.created_at }} {{ m.name }}（<a href="{{ url_for('restore_page', map_id=m.id) }}">復元に使う</a>） <form method="post" action="{{ url_for('delete_map', map_id=m.id) }}" style="display:inline" onsubmit="return confirm('この対応表を削除しますか？')"><button type="submit">削除</button></form></li>
 {% else %}<li>なし</li>{% endfor %}
 </ul>
 </body></html>"""
@@ -182,6 +182,14 @@ def do_mask():
     db = get_db()
     maps = db.execute("SELECT * FROM maps ORDER BY id DESC").fetchall()
     return render_template_string(INDEX, text=text, masked=masked, entries=entries, maps=maps)
+
+
+@app.route("/delete/<int:map_id>", methods=["POST"])
+def delete_map(map_id):
+    db = get_db()
+    db.execute("DELETE FROM maps WHERE id = ?", (map_id,))
+    db.commit()
+    return redirect(url_for("index"))
 
 
 @app.route("/restore/<int:map_id>", methods=["GET", "POST"])

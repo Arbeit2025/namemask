@@ -1,4 +1,5 @@
 import os
+import re
 import sys
 import tempfile
 import unittest
@@ -90,3 +91,33 @@ class NameMaskTest(unittest.TestCase):
 
 if __name__ == "__main__":
     unittest.main()
+
+class DeleteMapTest(unittest.TestCase):
+    def setUp(self):
+        app_module.init_db()
+        self.client = app_module.app.test_client()
+        with app_module.app.app_context():
+            conn = app_module.get_db()
+            conn.execute("DELETE FROM maps")
+            conn.commit()
+
+    def _save_map(self):
+        return self.client.post("/mask", data={
+            "text": "連絡は taro@example.jp まで",
+            "map_name": "削除テスト用",
+        })
+
+    def test_saved_map_can_be_deleted(self):
+        self._save_map()
+        body = self.client.get("/").get_data(as_text=True)
+        self.assertIn("削除テスト用", body)
+        m = re.search(r"/delete/(\d+)", body)
+        self.assertIsNotNone(m)
+        res = self.client.post(f"/delete/{m.group(1)}")
+        self.assertEqual(res.status_code, 302)
+        body = self.client.get("/").get_data(as_text=True)
+        self.assertNotIn("削除テスト用", body)
+
+    def test_delete_missing_map_redirects(self):
+        res = self.client.post("/delete/99999")
+        self.assertEqual(res.status_code, 302)
